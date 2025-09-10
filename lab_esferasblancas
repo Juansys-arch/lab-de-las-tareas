@@ -1,0 +1,101 @@
+import cv2
+import numpy as np
+import math
+from PIL import Image, ImageTk
+import imutils
+
+
+Captura = None
+capture = None
+BCapturar = None
+x1 = None
+y1 = None
+x2 = None
+y2 = None
+LImagen = None
+
+def iniciar():
+    global Captura, capture, BCapturar, x1, y1, x2, y2, LImagen
+    if Captura is not None and capture is not None and BCapturar is not None and LImagen is not None:
+        try:
+            BCapturar.place(x=250, y=330, width=91, height=23)
+        except Exception:
+            pass
+        ret, frame = capture.read() if hasattr(capture, 'read') else (False, None)
+        if ret:
+            frame = imutils.resize(frame, width=331)
+            frame = imutils.resize(frame, height=241)
+            ImagenCamara = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            Captura = ImagenCamara.copy()
+
+            esferas = []
+            gray = cv2.cvtColor(ImagenCamara, cv2.COLOR_RGB2GRAY)
+            blur = cv2.GaussianBlur(gray, (7,7), 0)
+            _, mask = cv2.threshold(blur, 200, 255, cv2.THRESH_BINARY)
+
+            kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5,5))
+            mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel, iterations=1)
+            mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel, iterations=1)
+
+            contornos_info = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            contornos = contornos_info[0] if len(contornos_info) == 2 else contornos_info[1]
+
+            salida = ImagenCamara.copy()
+            for c in contornos:
+                area = cv2.contourArea(c)
+                if area < 200:
+                    continue
+                per = cv2.arcLength(c, True)
+                if per == 0:
+                    continue
+                circularidad = 4 * math.pi * (area / (per * per))
+                if circularidad < 0.6:
+                    continue
+                (x, y), r = cv2.minEnclosingCircle(c)
+                cx, cy, r = int(x), int(y), int(r)
+                esferas.append((cx, cy, r))
+                cv2.circle(salida, (cx, cy), r, (0,255,0), 2)
+                cv2.circle(salida, (cx, cy), 2, (255,0,0), -1)
+                cv2.putText(salida, f"{cx},{cy}", (cx-20, cy-20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,0,0), 1)
+
+            try:
+                if all(v is not None and hasattr(v, 'get') for v in [x1, y1, x2, y2]):
+                    dx1 = int(x1.get())
+                    dy1 = int(y1.get())
+                    dx2 = int(x2.get())
+                    dy2 = int(y2.get())
+                    roi = Captura[dy1:dy2, dx1:dx2]
+                    gray_roi = cv2.cvtColor(roi, cv2.COLOR_RGB2GRAY)
+                    _, th = cv2.threshold(gray_roi, 200, 255, cv2.THRESH_BINARY)
+                    porcentaje_no_blanco = 100 - (cv2.countNonZero(th) / th.size * 100)
+                    if porcentaje_no_blanco > 5:
+                        mensaje = "Destino lleno: No se puede mover la esfera blanca"
+                    else:
+                        mensaje = "Destino libre"
+                    cv2.rectangle(salida, (dx1, dy1), (dx2, dy2), (255,0,0), 2)
+                    cv2.putText(salida, mensaje, (dx1, max(0, dy1-10)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,255), 1)
+            except Exception:
+                pass
+
+         
+            try:
+                im = Image.fromarray(salida)
+                img = ImageTk.PhotoImage(image=im)
+                LImagen.configure(image=img)
+                LImagen.image = img
+            except Exception:
+                pass
+
+            
+            try:
+                LImagen.after(10, iniciar)
+            except Exception:
+                pass
+        else:
+            if LImagen is not None:
+                LImagen.image = ""
+            if capture is not None:
+                try:
+                    capture.release()
+                except Exception:
+                    pass
