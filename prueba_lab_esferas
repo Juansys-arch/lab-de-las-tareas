@@ -1,0 +1,80 @@
+import tkinter as tk
+from PIL import Image, ImageTk
+import cv2
+import imutils
+import numpy as np
+import math
+
+# --- Variables globales ---
+Captura = None
+capture = None
+
+# --- GUI ---
+ventana = tk.Tk()
+ventana.geometry("400x300")
+LImagen = tk.Label(ventana, background="gray")
+LImagen.place(x=50, y=50, width=300, height=200)
+
+# Spinboxes de destino (simples para prueba)
+x1 = tk.Spinbox(ventana, from_=0, to=299)
+y1 = tk.Spinbox(ventana, from_=0, to=239)
+x2 = tk.Spinbox(ventana, from_=1, to=300)
+y2 = tk.Spinbox(ventana, from_=1, to=240)
+x1.place(x=10, y=10); y1.place(x=60, y=10)
+x2.place(x=110, y=10); y2.place(x=160, y=10)
+
+# --- Inicializar cámara ---
+capture = cv2.VideoCapture(0)
+if not capture.isOpened():
+    print("No se pudo abrir la cámara")
+else:
+    print("Cámara iniciada")
+
+# --- Función iniciar ---
+def iniciar():
+    global Captura, capture, LImagen, x1, y1, x2, y2
+    if capture is not None:
+        ret, frame = capture.read()
+        if ret:
+            frame = cv2.resize(frame, (300, 200))
+            ImagenCamara = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            Captura = ImagenCamara.copy()
+
+            # Detectar esferas blancas (umbral simple)
+            gray = cv2.cvtColor(ImagenCamara, cv2.COLOR_RGB2GRAY)
+            _, mask = cv2.threshold(gray, 200, 255, cv2.THRESH_BINARY)
+            contornos = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0]
+            salida = ImagenCamara.copy()
+            for c in contornos:
+                area = cv2.contourArea(c)
+                if area < 200: continue
+                (x, y), r = cv2.minEnclosingCircle(c)
+                cv2.circle(salida, (int(x), int(y)), int(r), (0,255,0), 2)
+
+            # Verificar zona destino
+            try:
+                dx1 = int(x1.get()); dy1 = int(y1.get())
+                dx2 = int(x2.get()); dy2 = int(y2.get())
+                roi = Captura[dy1:dy2, dx1:dx2]
+                gray_roi = cv2.cvtColor(roi, cv2.COLOR_RGB2GRAY)
+                _, th = cv2.threshold(gray_roi, 200, 255, cv2.THRESH_BINARY)
+                porcentaje_no_blanco = 100 - (cv2.countNonZero(th)/th.size*100)
+                mensaje = "Destino lleno" if porcentaje_no_blanco>5 else "Destino libre"
+                cv2.rectangle(salida, (dx1, dy1), (dx2, dy2), (255,0,0), 2)
+                color_msg = (0,0,255) if porcentaje_no_blanco>5 else (0,255,0)
+                cv2.putText(salida, mensaje, (dx1, max(0, dy1-10)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color_msg, 1)
+            except Exception:
+                pass
+
+            im = Image.fromarray(salida)
+            img = ImageTk.PhotoImage(image=im)
+            LImagen.configure(image=img)
+            LImagen.image = img
+
+            LImagen.after(30, iniciar)
+        else:
+            print("No se pudo leer frame de la cámara")
+
+# --- Iniciar cámara en vivo ---
+iniciar()
+ventana.mainloop()
