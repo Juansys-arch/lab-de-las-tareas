@@ -1,1 +1,315 @@
+import tkinter as tk
+from tkinter import *
+from tkinter import ttk
+from PIL import Image
+from PIL import ImageTk
+import imutils
+import cv2
+
+
+ventana = tk.Tk()
+ventana.geometry("1320x800")
+ventana.resizable(0,0)
+ventana.title("Proyecto procesamiento de imagen con Webcam")
+
+
+global Captura, CapturaG
+
+
+def camara():
+    global capture
+    capture = cv2.VideoCapture(0)
+    iniciar()
+
+def iniciar():
+    global capture
+    if capture is not None:
+        BCapturar.place(x=250,y=330,width=91,height=23)
+        ret, frame = capture.read()
+        if ret == True:
+            frame = imutils.resize(frame, width=311)
+            frame = imutils.resize(frame, height=241)
+            ImagenCamara = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            im = Image.fromarray(ImagenCamara)
+            img = ImageTk.PhotoImage(image= im)
+            LImagen.configure(image = img)
+            LImagen.image = img
+            LImagen.after(10,iniciar)
+        else:
+            LImagen.image = ""
+            capture.release()
+
+
+def Capturar():
+    global valor, Captura, CapturaG
+    camara = capture
+    return_value, image = camara.read()
+    frame = imutils.resize(image, width=301)
+    frame = imutils.resize(frame, height=221)
+    CapturaG = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    Captura = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    im = Image.fromarray(Captura)
+    img = ImageTk.PhotoImage(image= im)
+    imG = Image.fromarray(CapturaG)
+    imgG = ImageTk.PhotoImage(image= imG)
+    GImagenROI.configure(image= imgG)
+    GImagenROI.image = imgG
+    LImagenRecorte.configure(image= img)
+    LImagenRecorte.image = img
+
+def rgb():
+    global img_mask, img_aux, bin_imagen
+    Minimos = (int(SRedI.get()),int(SGreenI.get()),int(SBlueI.get()))
+    Maximos = (int(SRedD.get()),int(SGreenD.get()),int(SBlueD.get()))
+    img_mask = cv2.inRange(Captura, Minimos, Maximos)
+    img_aux = img_mask
+    img_mask = Image.fromarray(img_mask)
+    img_mask = ImageTk.PhotoImage(image= img_mask)
+    LImagenManchas.configure(image=img_mask)
+    LImagenManchas.image = img_mask
+    _, bin_imagen = cv2.threshold(img_aux, 0, 255, cv2.THRESH_BINARY_INV)
+
+def manchas():
+    if len(bin_imagen.shape) == 3:  
+        gray = cv2.cvtColor(bin_imagen, cv2.COLOR_BGR2GRAY)
+    else:
+        gray = bin_imagen.copy()
+
+    _, binary = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY)
+    
+    num_pixels_blancas = cv2.countNonZero(bin_imagen)
+    porcentaje_blancas = 100 - (num_pixels_blancas / bin_imagen.size) * 100
+    contornos_blancas,_ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    manchas_blancas = len(contornos_blancas)
+    
+    binary_invertida = cv2.bitwise_not(binary)
+    num_pixels_negras = cv2.countNonZero(binary_invertida)
+    porcentaje_negras = (num_pixels_negras / binary_invertida.size) * 100
+    contornos_negras, _ = cv2.findContours(binary_invertida, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    manchas_negras = len(contornos_negras)
+    
+    Cadena = ( 
+    f"Cantidad de manchas blancas: {manchas_blancas}\n"
+    f"Porcentaje de manchas blancas: {round(porcentaje_blancas,2)}%\n\n"
+    f"cantidad de manchas negras: {manchas_negras}\n"
+    f"Porcentaje de manchas negras: {round(porcentaje_negras,2)}%"
+    )
+
+
+    CajaTexto.configure(state='normal')
+    CajaTexto.delete(1.0, tk.END)
+    CajaTexto.insert(1.0, Cadena)
+    CajaTexto.configure(state='disabled')
+
+def umbralizacion():
+    global thresh1, mask
+    valor = int(numeroUmbra.get())
+    ret, thresh1 = cv2.threshold(CapturaG, valor, 255, cv2.THRESH_BINARY)
+    Umbral = Image.fromarray(thresh1)
+    Umbral = ImageTk.PhotoImage(image=Umbral)
+    UImagen.configure(image = Umbral)
+    UImagen.image = Umbral
+
+    min = (valor, valor, valor)
+    max = (255, 255, 255)
+    mask = cv2.inRange(Captura, min, max)
+
+def manchasG():
+    global thresh1, mask
+
+    
+    if len(thresh1.shape) == 3:  
+        gray = cv2.cvtColor(thresh1, cv2.COLOR_BGR2GRAY)
+    else:
+        gray = thresh1.copy()
+
+    _, binary = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY)
+
+ 
+    num_pixels_blancas = cv2.countNonZero(binary)
+    porcentaje_blancas = (num_pixels_blancas / binary.size) * 100
+    contornos_blancas, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    manchas_blancas = len(contornos_blancas)
+
+    binary_invertida = cv2.bitwise_not(binary)
+    num_pixels_negras = cv2.countNonZero(binary_invertida)
+    porcentaje_negras = (num_pixels_negras / binary_invertida.size) * 100
+    contornos_negras, _ = cv2.findContours(binary_invertida, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    manchas_negras = len(contornos_negras)
+
+ 
+    Cadena = (
+        f'Cantidad de manchas blancas: {manchas_blancas}\n'
+        f'Porcentaje de manchas blancas: {round(porcentaje_blancas,2)}%\n\n'
+        f'Cantidad de manchas negras: {manchas_negras}\n'
+        f'Porcentaje de manchas negras: {round(porcentaje_negras,2)}%'
+    )
+
+    CajaTexto.configure(state='normal')
+    CajaTexto.delete(1.0, tk.END)
+    CajaTexto.insert(1.0, Cadena)
+    CajaTexto.configure(state='disabled')
+
+def mostrar_coordenadas(event):
+    coordenadas['text']=f'Coordenadas x={event.x} y={event.y}'
+
+def recortar():
+    global ImgRec
+    Vx1 = max(0, min(int(x1.get()), Captura.shape[1]-1))
+    Vy1 = max(0, min(int(y1.get()), Captura.shape[0]-1))
+    Vx2 = max(Vx1+1, min(int(x2.get()), Captura.shape[1]))
+    Vy2 = max(Vy1+1, min(int(y2.get()), Captura.shape[0]))
+    
+    ImgRec = Captura[Vy1:Vy2, Vx1:Vx2]
+    Im = Image.fromarray(ImgRec)
+    ImRec = ImageTk.PhotoImage(image=Im)
+    LImagenROI.configure(image=ImRec)
+    LImagenROI.image = ImRec
+    
+def rgb_recorte():
+    global img_mask_rec, img_aux_rec, bin_imagen_rec
+    if ImgRec is None:
+        return  # evitar errores si no hay recorte
+    Minimos = (int(SRedI.get()), int(SGreenI.get()), int(SBlueI.get()))
+    Maximos = (int(SRedD.get()), int(SGreenD.get()), int(SBlueD.get()))
+    ImgRecBGR = cv2.cvtColor(ImgRec, cv2.COLOR_RGB2BGR)
+    img_mask_rec = cv2.inRange(ImgRecBGR, Minimos, Maximos)
+    img_aux_rec = img_mask_rec
+    img_mask_rec = Image.fromarray(img_mask_rec)
+    img_mask_rec = ImageTk.PhotoImage(image=img_mask_rec)
+    LImagenManchas.configure(image=img_mask_rec)
+    LImagenManchas.image = img_mask_rec
+    _, bin_imagen_rec = cv2.threshold(img_aux_rec, 0, 255, cv2.THRESH_BINARY_INV)
+    
+def manchas_recorte():
+    
+    if len(bin_imagen_rec.shape) == 3:
+        gray = cv2.cvtColor(bin_imagen_rec, cv2.COLOR_BGR2GRAY)
+    else:
+        gray = bin_imagen_rec.copy()
+
+    _, binary = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY)
+
+   
+    num_pixels_blancas = cv2.countNonZero(binary)
+    porcentaje_blancas = (num_pixels_blancas / binary.size) * 100
+    contornos_blancas, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    manchas_blancas = len(contornos_blancas)
+
+    binary_invertida = cv2.bitwise_not(binary)
+    num_pixels_negras = cv2.countNonZero(binary_invertida)
+    porcentaje_negras = (num_pixels_negras / binary_invertida.size) * 100
+    contornos_negras, _ = cv2.findContours(binary_invertida, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    manchas_negras = len(contornos_negras)
+
+  
+    Cadena = (
+        f"Cantidad de manchas blancas: {manchas_blancas}\n"
+        f"Porcentaje de manchas blancas: {round(porcentaje_blancas,2)}%\n\n"
+        f"Cantidad de manchas negras: {manchas_negras}\n"
+        f"Porcentaje de manchas negras: {round(porcentaje_negras,2)}%"
+    )
+
+  
+    CajaTexto2.configure(state='normal')
+    CajaTexto2.delete(1.0, tk.END)
+    CajaTexto2.insert(1.0, Cadena)
+    CajaTexto2.configure(state='disabled')
+
+
+BCamara = tk.Button(ventana, text="Iniciar camara", command=camara)
+BCamara.place(x=60,y=330,width=90,height=23)
+BCapturar = tk.Button(ventana, text="Tomar foto", command=Capturar)
+BCapturar.place(x=250,y=330,width=91,height=23)
+BBinary= tk.Button(ventana, text="Umbralizacion", command=umbralizacion)
+BBinary.place(x=800,y=310,width=90,height=23)
+BManchasG= tk.Button(ventana, text="Analisis de manchas", command=manchasG)
+BManchasG.place(x=1100,y=310,width=131,height=23)
+BRecortar = tk.Button(ventana, text="Recortar", command=recortar)
+BRecortar.place(x=155,y=700,width=80,height=23)
+BManchasRec= tk.Button(ventana, text="Umbralizacion recorte", command=rgb_recorte)
+BManchasRec.place(x=730, y=630, width=140, height=23)
+ManchasRGBRec= tk.Button(ventana, text="Analisis manchas recorte", command=manchas_recorte)
+ManchasRGBRec.place(x=880, y=630, width=180, height=23)
+
+
+numeroUmbra = tk.Spinbox(ventana, from_=0,to=255)
+numeroUmbra.place(x=900, y=310, width=42, height=22)
+x1 = tk.Spinbox(ventana, from_= 0, to = 298)
+x1.place(x=140, y=630, width=42, height=22)
+y1 = tk.Spinbox(ventana, from_= 0, to = 239)
+y1.place(x=240, y=630, width=42, height=22)
+x2 = tk.Spinbox(ventana, from_= 1, to = 298)
+x2.place(x=140, y=660, width=42, height=22)
+y2 = tk.Spinbox(ventana, from_= 1, to = 239)
+y2.place(x=240, y=660, width=42, height=22)
+
+
+LRed = tk.Label(ventana, text="R")
+LRed.place(x=530,y=640,width=21,height=16)
+LGreen = tk.Label(ventana, text="G")
+LGreen.place(x=530,y=680,width=21,height=16)
+LBlue = tk.Label(ventana, text="B")
+LBlue.place(x=530,y=720,width=21,height=16)
+coordenadasTitulo = tk.Label(ventana, text="Coordenadas")
+coordenadasTitulo.place(x=505,y=310)
+coordenadas = tk.Label(ventana, text="")
+coordenadas.place(x=495, y=330)
+Lx1 = tk.Label(ventana, text="x1")
+Lx1.place(x=120, y=630)
+Ly1 = tk.Label(ventana, text="y1")
+Ly1.place(x=220, y=630)
+Lx2 = tk.Label(ventana, text="x2")
+Lx2.place(x=120, y=660)
+Ly2 = tk.Label(ventana, text="y2")
+Ly2.place(x=220, y=660)
+
+LImagen = tk.Label(ventana, background="gray")
+LImagen.place(x=50, y=50, width=300, height=240)
+LImagenROI = tk.Label(ventana, background="gray")
+LImagenROI.place(x=390, y=380, width=300, height=240)
+
+GImagenROI = tk.Label(ventana, background="gray")
+GImagenROI.place(x=390, y=50, width=300, height=240)
+GImagenROI.bind('<Button-1>', mostrar_coordenadas)
+
+UImagen = tk.Label(ventana, background="gray")
+UImagen.place(x=730, y=50, width=301, height=240)
+
+LImagenManchas = tk.Label(ventana, background="gray")
+LImagenManchas.place(x=730, y=380, width=301, height=240)
+
+LImagenRecorte = tk.Label(ventana, background="gray")
+LImagenRecorte.place(x=50, y=380, width=301, height=240)
+
+
+
+CajaTexto = tk.Text(ventana, state="disabled")
+CajaTexto.place(x=1055, y=50, width=225, height=220)
+
+CajaTexto2 = tk.Text(ventana, state="disabled")
+CajaTexto2.place(x=1055, y=380, width=225, height=220)
+
+
+SRedI = tk.Scale(ventana, from_=1, to=255, orient='horizontal')
+SRedI.place(x=400, y=620)
+SGreenI = tk.Scale(ventana, from_=1, to=255, orient='horizontal')
+SGreenI.place(x=400, y=660)
+SBlueI = tk.Scale(ventana, from_=1, to=255, orient='horizontal')
+SBlueI.place(x=400, y=700)
+
+SRedD = tk.Scale(ventana, from_=1, to=255, orient='horizontal')
+SRedD.set(255)
+SRedD.place(x=580, y=620)
+SGreenD = tk.Scale(ventana, from_=1, to=255, orient='horizontal')
+SGreenD.set(255)
+SGreenD.place(x=580, y=660)
+SBlueD = tk.Scale(ventana, from_=1, to=255, orient='horizontal')
+SBlueD.set(255)
+SBlueD.place(x=580, y=700)
+
+
+ventana.mainloop()
+
+
 
