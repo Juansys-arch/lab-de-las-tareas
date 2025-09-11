@@ -1,0 +1,133 @@
+import tkinter as tk
+from PIL import Image, ImageTk
+import cv2
+import numpy as np
+import math
+
+# --- Configuración inicial ---
+Captura = None
+capture = cv2.VideoCapture(0)
+if not capture.isOpened():
+    print("No se pudo abrir la cámara")
+else:
+    print("Cámara iniciada")
+
+ventana = tk.Tk()
+ventana.geometry("700x500")
+ventana.title("Detección de esferas blancas")
+
+LImagen = tk.Label(ventana, background="gray")
+LImagen.place(x=50, y=50, width=600, height=400)
+
+
+# --- Funciones auxiliares ---
+def detectar_huevos(img):
+    """Detecta esferas blancas y devuelve su posición y radio"""
+    lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
+    l, a, b = cv2.split(lab)
+    l = cv2.equalizeHist(l)
+    lab = cv2.merge((l, a, b))
+    img_norm = cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)
+
+    hsv = cv2.cvtColor(img_norm, cv2.COLOR_BGR2HSV)
+    lower_white = np.array([0, 0, 180], dtype=np.uint8)
+    upper_white = np.array([180, 40, 255], dtype=np.uint8)
+    mask = cv2.inRange(hsv, lower_white, upper_white)
+
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
+    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel, iterations=2)
+    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel, iterations=2)
+
+    contornos, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    huevos = []
+    alto, ancho = mask.shape
+    area_min = 200
+    area_max = (ancho * alto) // 6
+
+    for c in contornos:
+        area = cv2.contourArea(c)
+        if area_min < area < area_max:
+            per = cv2.arcLength(c, True)
+            if per == 0:
+                continue
+            circularidad = 4 * math.pi * (area / (per * per))
+            if circularidad >= 0.7:
+                (x, y), r = cv2.minEnclosingCircle(c)
+                huevos.append((int(x), int(y), int(r)))
+    return huevos
+
+
+def verificar_huecos(img, huevos):
+    """Marca los huecos como ocupados o vacíos (solo ejemplo cuadrícula 2x3)"""
+    salida = img.copy()
+    alto, ancho, _ = salida.shape
+    # posiciones aproximadas (2 filas x 3 columnas)
+    step_x = ancho // 3
+    step_y = alto // 2
+    idx = 1
+    for i in range(2):  # filas
+        for j in range(3):  # columnas
+            x1, y1 = j * step_x, i * step_y
+            x2, y2 = (j + 1) * step_x, (i + 1) * step_y
+            cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
+
+            # Determinar si hay huevo cerca
+            ocupado = False
+            for (hx, hy, r) in huevos:
+                if abs(hx - cx) < step_x // 2 and abs(hy - cy) < step_y // 2:
+                    ocupado = True
+                    break
+
+            color = (0, 255, 0) if not ocupado else (0, 0, 255)
+            estado = "Vacío" if not ocupado else "Ocupado"
+            cv2.rectangle(salida, (x1, y1), (x2, y2), color, 2)
+            cv2.putText(salida, f"H{idx}:{estado}", (x1 + 5, y1 + 30),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
+            idx += 1
+    return salida
+
+
+def iniciar():
+    global Captura, capture, LImagen
+    if capture is not None:
+        ret, frame = capture.read()
+        if ret:
+            frame = cv2.resize(frame, (600, 400))
+            Captura = frame.copy()
+
+            # Detectar huevos
+            huevos = detectar_huevos(frame)
+
+            # Dibujar círculos detectados
+            salida = frame.copy()
+            for (x, y, r) in huevos:
+                cv2.circle(salida, (x, y), r, (255, 200, 0), 3)
+
+            # Verificar huecos y marcar ocupados/vacíos
+            salida = verificar_huecos(salida, huevos)
+
+            # Convertir a Tkinter
+            im = Image.fromarray(cv2.cvtColor(salida, cv2.COLOR_BGR2RGB))
+            img = ImageTk.PhotoImage(image=im)
+            LImagen.configure(image=img)
+            LImagen.image = img
+
+            # actualizar cada 30ms
+            LImagen.after(30, iniciar)
+        else:
+            print("No se pudo leer frame de la cámara")
+
+
+# --- Liberar cámara al cerrar ---
+def cerrar():
+    if capture is not None:
+        capture.release()
+    cv2.destroyAllWindows()
+    ventana.destroy()
+
+
+ventana.protocol("WM_DELETE_WINDOW", cerrar)
+
+# --- Iniciar ---
+iniciar()
+ventana.mainloop()
