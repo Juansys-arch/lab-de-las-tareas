@@ -1,0 +1,36 @@
+import tkinter as tk
+from tkinter import ttk, messagebox
+from tkinter.filedialog import asksaveasfilename
+import serial
+import time 
+
+comboBox1 = ttk.Combobox(
+    state="readonly",
+    values = ["COM1","COM2","COM3","COM4","COM5","COM6","COM7"],
+)
+comboBox1.set("COM1")
+comboBox1.place(x = 160, y=40, width=140, height=22)
+
+def click_pcplc():
+    SerialPort1.write(b"run pcplc"+b"\r")
+    time.sleep(2)
+    TextEnviar.delete(1.0, tk.END)
+    TextRecibir.delete(1.0, tk.END)
+    Recibir=serialPort1.read_all()
+    TextRecibidos.insert(1.0, Recibir)
+    messagebox.showinfo(message="Enviado correctamente", title="Resultado")
+def click_a():
+    serialPort1.write(b"a"+b"\r")
+    time.sleep(2)
+    TextEnviar.delete(1.0, tk.END)
+    TextRecibidos.delete(1.0, tk.END)
+    Recibir=SerialPort1.read_all()
+    TextRecibidos.insert(1.0, Recibir)
+    messagebox.showinfo(message="Enviado correctamente", title="Resultado")
+def click_ttsib():
+    SerialPort1.write(b"run ppnb"+b"\r")
+    time.sleep(2)
+    TextEnviar.delete(1.0, tk.END)
+    TextRecibidos.delete(1.0, tk.END)
+    Recibir=SerialPort.read_all()
+   
