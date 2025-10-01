@@ -145,11 +145,11 @@ DatosR = tk.Label(ventana, text="Datos Recibidos")
 DatosR.place(x=380, y=102)
 
 #Botones
-BConectar = tk.Button(ventana, text="Conectar", width=9, command=click_conector)
-BConectar.place(x=120 ,y=39)
+BConectar = tk.Button(ventana, text="Conectar", width=19, command=click_conector)
+BConectar.place(x=30 ,y=10)
 
-BDesconectar = tk.Button(ventana, text="Desconectar", width=10, command=click_desconectar)
-BDesconectar.place(x=400 ,y=39)
+BDesconectar = tk.Button(ventana, text="Desconectar", width=9, command=click_desconectar)
+BDesconectar.place(x=30 ,y=39)
 
 BRunpcplc = tk.Button(ventana, text="Run pcplc", width=9, command=click_pcplc)
 BRunpcplc.place(x=10 ,y=100)
