@@ -1,0 +1,221 @@
+import tkinter as tk
+from tkinter import ttk, messagebox
+from tkinter.filedialog import asksaveasfilename
+import serial
+import time
+
+#Creamos la ventana
+ventana = tk.Tk()
+ventana.geometry("600x400")
+ventana.resizable(0,0)
+ventana.title("Comunicacion Serial")
+
+#funciones
+def click_pcplc():
+    TextRecibidos.configure(state="normal")
+    SerialPort1.write(b"Run pcplc")
+    time.sleep(2)
+    Recibir = SerialPort1.read_all()
+    TextRecibidos.insert(tk.END, Recibir)
+    TextRecibidos.configure(state="disabled")
+    
+def click_a():
+    TextRecibidos.configure(state="normal")
+    SerialPort1.write(b"a")
+    time.sleep(2)
+    Recibir = SerialPort1.read_all()
+    TextRecibidos.insert(tk.END, Recibir)
+    TextRecibidos.configure(state="disabled")
+    
+def click_ttsib():
+    TextRecibidos.configure(state="normal")
+    SerialPort1.write(b"Run ppnb")
+    time.sleep(2)
+    Recibir = SerialPort1.read_all()
+    TextRecibidos.insert(tk.END, Recibir)
+    TextRecibidos.configure(state="disabled")
+    
+def click_coff():
+    TextRecibidos.configure(state="normal")
+    SerialPort1.write(b"coff")
+    time.sleep(2)
+    Recibir = SerialPort1.read_all()
+    TextRecibidos.insert(tk.END, Recibir)
+    TextRecibidos.configure(state="disabled")
+    
+def click_move():
+    TextRecibidos.configure(state="normal")
+    SerialPort1.write(b"move 0")
+    time.sleep(2)
+    Recibir = SerialPort1.read_all()
+    TextRecibidos.insert(1.0, Recibir)
+    TextRecibidos.configure(state="disabled")
+    
+def click_open():
+    TextRecibidos.configure(state="normal")
+    SerialPort1.write(b"open"+b"\r")
+    time.sleep(2)
+    Recibir = SerialPort1.read_all()
+    TextRecibidos.insert(tk.END, Recibir)
+    TextRecibidos.configure(state="disabled")
+    
+def click_close():
+    TextRecibidos.configure(state="normal")
+    SerialPort1.write(b"close"+b"\r")
+    time.sleep(2)
+    Recibir = SerialPort1.read_all()
+    TextRecibidos.insert(tk.END, Recibir)
+    TextRecibidos.configure(state="disabled")
+
+def click_conectar():
+    if SerialPort1.isOpen() == False:
+        SerialPort1.baudrate = 9600
+        SerialPort1.bytesize = 8
+        SerialPort1.parity = "N"
+        SerialPort1.stopbits = serial.STOPBITS_ONE
+        SerialPort1.port = comboBox1.get()
+        SerialPort1.open()
+        TextoEstado["state"] = "normal"
+        TextoEstado.delete(1.0, tk.END)
+        TextoEstado.insert(1.0, "Conectado")
+        TextoEstado.configure(background="LIME")
+        messagebox.showinfo(message="Puerto Conectado")
+        TextoEstado["state"] = "disabled"
+        
+def click_desconectar():
+    if SerialPort1.isOpen() == True:
+        SerialPort1.close()
+        TextoEstado["state"] = "normal"
+        TextoEstado.delete(1.0, tk.END)
+        TextoEstado.insert(1.0 , "Desconectado")
+        TextoEstado.configure(background="red")
+        messagebox.showinfo(message="Puerto Desconectado")
+        TextoEstado["state"] = "disabled"
+        
+def click_enviar():
+    TextRecibidos.configure(state="normal")
+    msj = TextEnviar.get(1.0, tk.END)
+    lista = msj.split("\n")
+    for x in lista:
+        print(f"Enviando comando for: '{x}'")
+        if x.strip() == "":
+            print(f"Enviando comando vacio: '{x}'")
+            pass
+        elif "Run" in x:
+            SerialPort1.write(x.encode()+b"\r")
+            inicio = time.time()
+            while True:
+                print(f"Enviando comando elif: '{x}'")
+                aux = SerialPort1.read_all()
+                if b"ok" in aux:
+                    TextRecibidos.insert(tk.END, b"Done.\n")
+                    messagebox.showinfo(message="Enviado Correctamente", title="Resultado")
+                    time.sleep(1)
+                    break
+                if time.time() - inicio > 5:
+                    print(f"Enviando comando timeout: '{x}'")
+                    TextRecibidos.insert(tk.END, "Time out no se pudo realizar el comando:" + x +"\n")
+                    break
+                time.sleep(0.5)
+        else:
+            print(f"Enviando comando else: '{x}'")
+            SerialPort1.write(x.encode()+b"\r")
+            time.sleep(2+int(comboBoxT.get()))
+            messagebox. showinfo(message="Enviado Correctamente", title="Resultado")
+            aux = SerialPort1.read_all()                          
+            aux2 = aux.decode('utf -8')
+            lineas = aux2.splitlines()
+            resultado = "\n".join(lineas[1:]).strip()
+            TextRecibidos.insert(tk.END, resultado + "\n")
+            
+    TextRecibidos.configure(state="disabled")
+    
+def click_guardar():
+    filepath = asksaveasfilename(
+        defaultextension="txt",
+        filetypes=[("Text Files", " *. txt"), ("All Files", " *.* ") ],
+    )
+    if not filepath:
+        return
+    with open(filepath, "w") as output_file:
+        text = TextRecibidos.get(1.0, tk.END)
+        output_file.write(text)
+
+#Label
+DatosE = tk.Label(ventana, text="Datos Enviados")
+DatosE.place(x= 130,y= 102)
+
+DatosR = tk.Label(ventana, text="Datos Recibidos")
+DatosR.place(x=380, y=102)
+
+#Botones
+BConectar = tk.Button(ventana, text="Conectar", width=9, command=click_conectar)
+BConectar.place(x=120 ,y=39)
+
+BDesconectar = tk.Button(ventana, text="Desconectar", width=10, command=click_desconectar)
+BDesconectar.place(x=400 ,y=39)
+
+BRunpcplc = tk.Button(ventana, text="Run pcplc", width=9, command=click_pcplc)
+BRunpcplc.place(x=10 ,y=100)
+
+BAbortar = tk.Button(ventana, text="Abortar", width=9, command=click_a)
+BAbortar.place(x=10 ,y=130)
+
+BRunttsib = tk.Button(ventana, text="Run ttsib", width=9, command=click_ttsib)
+BRunttsib.place(x=10 ,y=160)
+
+BCoff = tk.Button(ventana, text="Coff", width=9, command=click_coff)
+BCoff.place(x=10 ,y=190)
+
+BMove = tk.Button(ventana, text="Move 0", width=9, command=click_move)
+BMove.place(x=10 ,y=220)
+
+BOpen = tk.Button(ventana, text="Open", width=9, command=click_open)
+BOpen.place(x=10 ,y=250)
+
+BClose = tk.Button(ventana, text="Close", width=9, command=click_close)
+BClose.place(x=10 ,y=280)
+
+BEnviar = tk.Button(ventana, text="Enviar", width=9,command=click_enviar)
+BEnviar.place(x=100, y=320)
+
+BGuardar = tk.Button(ventana, text="Guardar", width=9, command=click_guardar)
+BGuardar.place(x=350, y=320)
+
+BLimpiarE=tk.Button(ventana, text="Limpiar", width=9,command=lambda:TextEnviar.delete(1.0, tk.END))
+BLimpiarE.place(x=178, y=320)
+
+BLimpiarR=tk.Button(ventana, text="Limpiar", width=9,command=lambda:(TextRecibidos.configure(state="normal"),TextRecibidos.delete(1.0, tk.END),TextRecibidos.configure(state="disabled")))
+BLimpiarR.place(x=430, y=320)
+
+#Combobox
+comboBox1 = ttk.Combobox(
+    state="readonly",
+    values = ["COM1","COM2","COM3","COM4","COM5","COM6","COM7"]
+    )
+comboBox1.set("COM1")
+comboBox1.place(x = 230, y=40, width=140, height=22)
+
+comboBoxT = ttk.Combobox(
+    state="readonly",
+    values = [1,2,3,4,5,6,7,8,9]
+)
+comboBoxT.set(0)
+comboBoxT.place(x = 230, y=60, width=140, height=22)
+
+#Cajas De texto
+TextEnviar = tk.Text(ventana)
+TextEnviar.place(x=100, y=125, width=150, height=190)
+
+TextRecibidos = tk.Text(ventana,font=("Arial", 8), state="disabled")
+TextRecibidos.place(x=260,y=125, width=330, height=190) 
+
+TextoEstado = tk.Text(ventana, state="normal", bg="white")
+TextoEstado.tag_configure("center", justify="center")
+TextoEstado.insert(1.0, "DESCONECTADO","center")
+TextoEstado.config(state="disabled")
+TextoEstado.place(x=230, y=10, width=140, height=22)
+
+#Serial
+SerialPort1 = serial.Serial()
+ventana.mainloop()
