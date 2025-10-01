@@ -4,6 +4,11 @@ from tkinter.filedialog import asksaveasfilename
 import serial
 import time 
 
+ventana=tk.Tk()
+ventana.geometry("600x400")
+ventana.resizable(0,0)
+ventana.title("comunicacion serial")
+
 comboBox1 = ttk.Combobox(
     state="readonly",
     values = ["COM1","COM2","COM3","COM4","COM5","COM6","COM7"],
@@ -15,12 +20,12 @@ def click_pcplc():
     SerialPort1.write(b"run pcplc"+b"\r")
     time.sleep(2)
     TextEnviar.delete(1.0, tk.END)
-    TextRecibir.delete(1.0, tk.END)
-    Recibir=serialPort1.read_all()
+    TextRecibidos.delete(1.0, tk.END)
+    Recibir=SerialPort1.read_all()
     TextRecibidos.insert(1.0, Recibir)
     messagebox.showinfo(message="Enviado correctamente", title="Resultado")
 def click_a():
-    serialPort1.write(b"a"+b"\r")
+    SerialPort1.write(b"a"+b"\r")
     time.sleep(2)
     TextEnviar.delete(1.0, tk.END)
     TextRecibidos.delete(1.0, tk.END)
@@ -32,5 +37,173 @@ def click_ttsib():
     time.sleep(2)
     TextEnviar.delete(1.0, tk.END)
     TextRecibidos.delete(1.0, tk.END)
-    Recibir=SerialPort.read_all()
-   
+    Recibir=SerialPort1.read_all()
+    TextRecibidos.insert(1.0,Recibir)
+    messagebox.showinfo(message="Enviado Correctamente", title="Resultado")
+
+def click_coff():
+    SerialPort1.write(b"coff"+b"\r")
+    time.sleep(2)
+    TextEnviar.delete(1.0, tk.END)
+    TextRecibidos.delete(1.0, tk.END)
+    Recibir=SerialPort1.read_all()
+    TextRecibidos.insert(1.0, Recibir)
+    messagebox.showinfo(message="Enviado Correctamente", title="Resultado")
+
+def click_move():
+    SerialPort1.write(b"move 0"+b"\r")
+    time.sleep(2)
+    TextEnviar.delete(1.0, tk.END)
+    TextRecibidos.delete(1.0, tk.END)
+    Recibir=SerialPort1.read_all()
+    TextRecibidos.insert(1.0, Recibir)
+    messagebox.showinfo(message="Enivado Correctamente", title="Resultado")
+
+def click_open():
+    SerialPort1.write(b"open"+b"\r")
+    time.sleep(2)
+    TextEnviar.delete(1.0, tk.END)
+    TextRecibidos.delete(1.0, tk.END)
+    Recibir=SerialPort1.read_all()
+    TextRecibidos.insert(1.0, Recibir)
+    messagebox.showinfo(message="Enivado Correctamente", title="Resultado")
+
+def click_close():
+    SerialPort1.write(b"close"+b"\r")
+    time.sleep(2)
+    TextEnviar.delete(1.0, tk.END)
+    TextRecibidos.delete(1.0, tk.END)
+    Recibir=SerialPort1.read_all()
+    TextRecibidos.insert(1.0, Recibir)
+    messagebox.showinfo(message="Enivado Correctamente", title="Resultado")
+
+def click_conector():
+    if SerialPort1.isopen() == False:
+        SerialPort1.baudrate = 9600
+        SerialPort1.bytesize = 8
+        SerialPort1.parity = "N"
+        SerialPort1.stopbits = serial.STOPBITS_ONE
+        SerialPort1.port = comboBox1.get()
+        SerialPort1.open()
+        TextEstado["state"] = "normal"
+        TextEstado.delete(1.0, tk.END)
+        TextEstado.insert(1.0, "conectado")
+        TextEstado.configure(background="LINE")
+        messagebox.showinfo(message="Puerto conectado")
+        TextEstado["state"] = "disabled"
+
+def click_desconectar():
+    if SerialPort1.isOpen() == True:
+        SerialPort1.close()
+        TextEstado["state"] = "normal"
+        TextEstado.delete(1.0, tk.END)
+        TextEstado.insert(1.0, "Desconectado")
+        TextEstado.configure(background="red")
+        messagebox.showinfo(message="Puerto Desconectado")
+        TextEstado["state"] = "disabled"
+
+def click_enviar():
+    SerialPort1.write(TextEnviar.get().encode()+b"\r")
+    time.sleep(2)
+    messagebox.showinfo(message="Enviado Correctamente", title="Resultado")
+
+def click_guardar():
+    filepath = asksaveasfilename(
+        defaultextension="txt",
+        filetypes=[("Text Files", "*txt"), ("All FIles", "*.*"),]    
+        )
+    if not filepath:
+        return
+    with open(filepath, "w") as output_file:
+        text = TextEnviar.get(1.0, tk.END)
+        output_file.write(text)
+        aux = SerialPort1.read_all()
+    if b"Done." in aux:
+        TextRecibidos.insert(1.0, b"Done. \n")
+
+
+def click_enviar():
+    msj = TextEnviar.get(1.0, tk.END)
+    lista = msj.split("\n")
+    for x in lista:
+        if x == "":
+            pass
+        else:
+            SerialPort1.write(x.encode()+b"\r")
+            time.sleep(2+int(ComboBoxT.get()))
+            TextEnviar.delete(1.0, tk.END)
+            TextRecibidos.delete(1.0, tk.END)
+            aux = SerialPort1.read_all()
+            TextRecibidos.insert(1.0,aux)
+    messagebox.showinfo(message="Enviado Correctamente", title="Resultado")
+
+#Label
+DatosE = tk.Label(ventana, text="Datos Enviados")
+DatosE.place(x= 130,y= 102)
+
+DatosR = tk.Label(ventana, text="Datos Recibidos")
+DatosR.place(x=380, y=102)
+
+#Botones
+BConectar = tk.Button(ventana, text="Conectar", width=9, command=click_conector)
+BConectar.place(x=120 ,y=39)
+
+BDesconectar = tk.Button(ventana, text="Desconectar", width=10, command=click_desconectar)
+BDesconectar.place(x=400 ,y=39)
+
+BRunpcplc = tk.Button(ventana, text="Run pcplc", width=9, command=click_pcplc)
+BRunpcplc.place(x=10 ,y=100)
+
+BAbortar = tk.Button(ventana, text="Abortar", width=9, command=click_a)
+BAbortar.place(x=10 ,y=130)
+
+BRunttsib = tk.Button(ventana, text="Run ttsib", width=9, command=click_ttsib)
+BRunttsib.place(x=10 ,y=160)
+
+BCoff = tk.Button(ventana, text="Coff", width=9, command=click_coff)
+BCoff.place(x=10 ,y=190)
+
+BMove = tk.Button(ventana, text="Move 0", width=9, command=click_move)
+BMove.place(x=10 ,y=220)
+
+BOpen = tk.Button(ventana, text="Open", width=9, command=click_open)
+BOpen.place(x=10 ,y=250)
+
+BClose = tk.Button(ventana, text="Close", width=9, command=click_close)
+BClose.place(x=10 ,y=280)
+
+BEnviar = tk.Button(ventana, text="Enviar", width=9,command=click_enviar)
+BEnviar.place(x=100, y=320)
+
+BGuardar = tk.Button(ventana, text="Guardar", width=9, command=click_guardar)
+BGuardar.place(x=350, y=320)
+
+BLimpiarE=tk.Button(ventana, text="Limpiar", width=9,command=lambda:TextEnviar.delete(1.0, tk.END))
+BLimpiarE.place(x=178, y=320)
+
+BLimpiarR=tk.Button(ventana, text="Limpiar", width=9,command=lambda:(TextRecibidos.configure(state="normal"),TextRecibidos.delete(1.0, tk.END),TextRecibidos.configure(state="disabled")))
+BLimpiarR.place(x=430, y=320)
+
+ComboBoxT = ttk.Combobox(
+    state="readonly",
+    values=[0,1,2,3,4,5,6,7,8,9]
+)
+ComboBoxT.set(0)
+ComboBoxT.place(x= 160, y=60, width=140, height=22)
+
+TextEnviar = tk.Text(ventana)
+TextEnviar.place(x=100, y=125, width=150, height=190)
+
+TextRecibidos = tk.Text(ventana,font=("Ariel", 8), state="disabled")
+TextRecibidos.place(x=260,y=125, width=330, height=190)
+
+TextEstado = tk.Text(ventana, state="normal", bg="white")
+TextEstado.tag_configure("center", justify="center")
+TextEstado.insert(1.0, "DESCONECTADO","center")
+TextEstado.config(state="disabled")
+TextEstado.place(x=230, y=10, width=140, height=22)
+
+
+
+SerialPort1 = serial.Serial()
+ventana.mainloop()
